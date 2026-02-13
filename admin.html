@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexus Platform - Admin</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="js/script.js" defer></script>
+</head>
+<body>
+    <header class="header">
+        <div class="logo">
+            <svg viewBox="0 0 24 24" width="28" height="28"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+            NEXUS
+        </div>
+        <nav class="nav-links">
+            <div class="nav-item" data-page="/">Главная</div>
+            <div class="nav-item" data-page="/shop">Магазин</div>
+            <div class="nav-item" data-page="/community">Сообщество</div>
+            <div class="nav-item" data-page="/stream">Стримы</div>
+            <div class="nav-item" data-page="/profile">Профиль</div>
+            <div class="nav-item" data-page="/admin">Админ</div>
+        </nav>
+        <div class="user-profile" data-page="/profile" title="Открыть профиль">
+            <div class="balance">4 500 ₸</div>
+            <div class="avatar" style="background-image: url('https://placehold.co/100x100/4c1d95/FFF?text=U'); background-size: cover;"></div>
+        </div>
+    </header>
+
+    <div class="main-container">
+        <main class="content-area" id="adminPage">
+            <div class="section-title">Панель администратора</div>
+
+            <div class="panel-grid" style="margin-bottom: 20px;">
+                <section class="panel-card">
+                    <div class="panel-subtitle">Общая статистика</div>
+                    <div class="profile-meta-row"><span>Пользователей:</span> <strong id="statsUsers">0</strong></div>
+                    <div class="profile-meta-row"><span>Задач:</span> <strong id="statsTasks">0</strong></div>
+                    <div class="profile-meta-row"><span>Открытых задач:</span> <strong id="statsOpenTasks">0</strong></div>
+                    <div class="profile-meta-row"><span>Активных стримов:</span> <strong id="statsStreams">0</strong></div>
+                </section>
+
+                <section class="panel-card">
+                    <div class="panel-subtitle">Создать задачу</div>
+                    <form id="addTaskForm" class="stack-form">
+                        <label>
+                            Название задачи
+                            <input id="adminTaskTitle" type="text" class="admin-input" placeholder="Например: Проверить модерацию чата" required>
+                        </label>
+                        <label>
+                            Тип
+                            <input id="adminTaskType" type="text" class="admin-input" placeholder="moderation / event / store">
+                        </label>
+                        <button type="submit" class="btn btn-primary">Добавить задачу</button>
+                    </form>
+                </section>
+
+                <section class="panel-card">
+                    <div class="panel-subtitle">Рассылка объявления</div>
+                    <form id="broadcastForm" class="stack-form">
+                        <label>
+                            Сообщение для всех пользователей
+                            <textarea id="broadcastMessage" rows="4" class="admin-input" placeholder="Серверное сообщение..."></textarea>
+                        </label>
+                        <button type="submit" class="btn btn-secondary">Отправить рассылку</button>
+                    </form>
+                </section>
+            </div>
+
+            <div class="panel-grid">
+                <section class="panel-card">
+                    <div class="panel-subtitle">Пользователи</div>
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Ник</th>
+                                <th>Роль</th>
+                                <th>Статус</th>
+                                <th>Баланс</th>
+                            </tr>
+                        </thead>
+                        <tbody id="adminUsersList"></tbody>
+                    </table>
+                </section>
+
+                <section class="panel-card">
+                    <div class="panel-subtitle">Задачи</div>
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Название</th>
+                                <th>Тип</th>
+                                <th>Статус</th>
+                            </tr>
+                        </thead>
+                        <tbody id="adminTasksList"></tbody>
+                    </table>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <div id="notification-container"></div>
+</body>
+</html>

@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexus Platform - Auth</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="js/script.js" defer></script>
+</head>
+<body>
+    <header class="header">
+        <div class="logo">
+            <svg viewBox="0 0 24 24" width="28" height="28"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+            NEXUS
+        </div>
+        <nav class="nav-links">
+            <div class="nav-item" data-page="/">Главная</div>
+            <div class="nav-item" data-page="/shop">Магазин</div>
+            <div class="nav-item" data-page="/community">Сообщество</div>
+            <div class="nav-item" data-page="/stream">Стримы</div>
+            <div class="nav-item" data-page="/profile">Профиль</div>
+            <div class="nav-item" data-page="/admin">Админ</div>
+        </nav>
+        <div class="user-profile" data-page="/profile" title="Открыть профиль">
+            <div class="balance">0 ₸</div>
+            <div class="avatar" style="background-image: url('https://placehold.co/100x100/4c1d95/FFF?text=U'); background-size: cover;"></div>
+        </div>
+    </header>
+
+    <div class="main-container">
+        <main class="content-area" id="authPage">
+            <div class="section-title">Авторизация</div>
+
+            <div class="panel-grid">
+                <section class="panel-card">
+                    <div class="panel-subtitle">Вход</div>
+                    <form id="loginForm" class="stack-form">
+                        <label>
+                            Логин
+                            <input id="loginUsername" class="admin-input" type="text" placeholder="NexusPlayer" required>
+                        </label>
+                        <label>
+                            Пароль
+                            <input id="loginPassword" class="admin-input" type="password" placeholder="••••" required>
+                        </label>
+                        <button type="submit" class="btn btn-primary">Войти</button>
+                    </form>
+                </section>
+
+                <section class="panel-card">
+                    <div class="panel-subtitle">Регистрация</div>
+                    <form id="registerForm" class="stack-form">
+                        <label>
+                            Логин
+                            <input id="registerUsername" class="admin-input" type="text" placeholder="Новый пользователь" required>
+                        </label>
+                        <label>
+                            Пароль
+                            <input id="registerPassword" class="admin-input" type="password" placeholder="Минимум 4 символа" required>
+                        </label>
+                        <button type="submit" class="btn btn-secondary">Зарегистрироваться</button>
+                    </form>
+                </section>
+            </div>
+
+            <div style="margin-top: 20px; color: var(--text-muted); font-size: 13px;">
+                Демо-админ: <strong style="color: var(--text-bright)">NexusAdmin / admin123</strong>
+            </div>
+        </main>
+    </div>
+
+    <div id="notification-container"></div>
+</body>
+</html>

@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexus Platform - Library & Store</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="js/script.js" defer></script>
+</head>
+
+<body>
+
+    <!-- HEADER -->
+    <header class="header">
+        <div class="logo">
+            <svg viewBox="0 0 24 24" width="28" height="28"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+            NEXUS
+        </div>
+        <nav class="nav-links">
+            <div class="nav-item" data-page="/">Главная</div>
+            <div class="nav-item" data-page="/shop">Магазин</div>
+            <div class="nav-item" data-page="/community">Сообщество</div>
+            <div class="nav-item" data-page="/stream">Стримы</div>
+            <div class="nav-item" data-page="/profile">Профиль</div>
+            <div class="nav-item" data-page="/admin">Админ</div>
+        </nav>
+        <div class="user-profile" data-page="/profile" title="Открыть профиль">
+            <div class="balance">4 500 ₸</div>
+            <div class="avatar" style="background-image: url('https://placehold.co/100x100/4c1d95/FFF?text=U'); background-size: cover;"></div>
+        </div>
+    </header>
+
+    <div class="main-container">
+        
+        <!-- SIDEBAR -->
+        <aside class="library-sidebar">
+            <input type="text" id="gameSearch" class="lib-search" placeholder="Поиск коллекции...">            
+            <div style="font-size: 11px; color: var(--text-muted); margin: 10px 14px; text-transform: uppercase; font-weight: 700; letter-spacing: 1px;">Избранное</div>
+            <div class="game-row active">
+                <div class="icon-sm" style="background: var(--accent-yellow);"></div>
+                CyberNexus 2077
+            </div>
+            <div class="game-row installed">
+                <div class="icon-sm" style="background: var(--accent-purple);"></div>
+                Void Bastion
+            </div>
+            
+            <div style="font-size: 11px; color: var(--text-muted); margin: 20px 14px 10px; text-transform: uppercase; font-weight: 700; letter-spacing: 1px;">Установлено (5)</div>
+            <div class="game-row installed">
+                <div class="icon-sm" style="background: #22c55e;"></div>
+                Apex Legends
+            </div>
+            <div class="game-row installed">
+                <div class="icon-sm" style="background: #3b82f6;"></div>
+                Counter-Strike 2
+            </div>
+        </aside>
+
+        <!-- CONTENT -->
+        <main class="content-area">
+            
+            <!-- HERO -->
+            <div class="hero-banner" style="background-image: linear-gradient(to top, #0b0c15 10%, rgba(124, 58, 237, 0.2) 100%), url('https://placehold.co/1200x500/111/FFF?text=Space+Odyssey');">
+                <div class="hero-content">
+                    <div class="hero-logo">Galactic Frontier</div>
+                    <p class="hero-desc">
+                        Исследуйте неизведанные уголки галактики в новом дополнении "Starlight". Стройте колонии, торгуйте с инопланетными расами и защищайте свой флот.
+                    </p>
+                    <div class="btn-group">
+                        <button class="btn btn-primary" id="playNowBtn">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="black"><path d="M8 5v14l11-7z"/></svg>
+                            Играть
+                        </button>
+                        <button class="btn btn-secondary" id="heroDetailsBtn">Подробнее</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- GRID -->
+            <div class="section-title">Быстрый запуск</div>
+            <div class="games-grid">
+                
+                <!-- Card 1 -->
+                <div class="game-card">
+                    <div class="card-cover" style="background-color: #4c1d95; display: flex; align-items: center; justify-content: center; color: rgba(255,255,255,0.3); font-weight: 900; font-size: 32px;">CN</div>
+                    <div class="card-info">
+                        <div class="card-title">CyberNexus 2077</div>
+                        <div class="card-meta">
+                            <span style="color: var(--accent-purple);">Запущено</span>
+                            <span>2 мин. назад</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card 2 -->
+                <div class="game-card">
+                    <div class="card-cover" style="background-color: #1e3a8a; display: flex; align-items: center; justify-content: center; color: rgba(255,255,255,0.3); font-weight: 900; font-size: 32px;">CS</div>
+                    <div class="card-info">
+                        <div class="card-title">Counter-Strike 2</div>
+                        <div class="card-meta">
+                            <span style="color: var(--accent-yellow);">Обновление...</span>
+                            <span>45%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card 3 -->
+                <div class="game-card">
+                    <div class="card-cover" style="background-color: #be123c; display: flex; align-items: center; justify-content: center; color: rgba(255,255,255,0.3); font-weight: 900; font-size: 32px;">ER</div>
+                    <div class="card-info">
+                        <div class="card-title">Elden Ring</div>
+                        <div class="card-meta">
+                            <span style="color: var(--text-muted);">Установлено</span>
+                            <span>150 ч.</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card 4 (Store) -->
+                <div class="game-card" style="border: 1px dashed var(--accent-purple); background: rgba(124, 58, 237, 0.05);">
+                    <div class="card-cover" style="background-color: transparent; height: 180px; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 10px;">
+                        <div style="font-size: 40px; color: var(--accent-yellow);">★</div>
+                        <div style="color: var(--text-main); font-weight: bold;">Топ Продаж</div>
+                    </div>
+                    <div class="card-info" style="background: rgba(0,0,0,0.2);">
+                        <div class="card-title">Starfield</div>
+                        <div class="card-meta">
+                            <span class="tag-price">-15%</span>
+                            <span style="color: var(--accent-yellow); font-weight: bold;">12 900 ₸</span>
+                        </div>
+                        <button class="btn btn-primary" style="width: 100%; margin-top: 12px; padding: 8px; font-size: 12px;" data-cart-item="Starfield">В корзину</button>
+                    </div>
+                </div>
+
+            </div>
+
+        </main>
+
+        <!-- RIGHT PANEL -->
+        <aside class="friends-sidebar">
+            <div style="font-size: 12px; color: var(--text-muted); text-transform: uppercase; font-weight: 700; margin-bottom: 20px; display: flex; justify-content: space-between;">
+                Друзья <span>(3 онлайна)</span>
+            </div>
+
+            <div class="friend-item">
+                <div class="friend-avatar">
+                    <div class="status-dot status-ingame"></div>
+                </div>
+                <div class="friend-info">
+                    <div class="friend-name">NeonRider</div>
+                    <div class="friend-status ingame">В игре: Apex</div>
+                </div>
+            </div>
+
+            <div class="friend-item">
+                <div class="friend-avatar" style="background: #be185d;">
+                    <div class="status-dot status-online"></div>
+                </div>
+                <div class="friend-info">
+                    <div class="friend-name">Luna_Sky</div>
+                    <div class="friend-status" style="color: var(--text-link);">В сети</div>
+                </div>
+            </div>
+            
+            <div style="margin-top: auto;">
+                 <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 12px; border: 1px solid rgba(251, 191, 36, 0.2);">
+                     <div style="font-size: 12px; color: var(--accent-yellow); font-weight: bold; margin-bottom: 5px;">ВАШ СТАТУС</div>
+                     <div style="font-size: 11px; color: var(--text-muted);">Вы видимы как "Онлайн"</div>
+                 </div>
+            </div>
+        </aside>
+
+    </div>
+
+    <!-- FOOTER -->
+    <footer class="download-bar">
+        <div style="display: flex; align-items: center; gap: 16px;">
+            <div style="width: 36px; height: 36px; background: #1e3a8a; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 10px;">CS</div>
+            <div style="display: flex; flex-direction: column;">
+                <span style="color: var(--text-bright); font-size: 12px; font-weight: bold;">UPDATING: Counter-Strike 2</span>
+                <span style="color: var(--text-muted); font-size: 11px;">Осталось: 4 мин</span>
+            </div>
+        </div>
+        
+        <div style="display: flex; align-items: center; gap: 20px;">
+            <div style="text-align: right;">
+                <div style="color: var(--accent-purple); font-weight: bold; font-size: 12px;">45%</div>
+                <div style="color: var(--text-muted); font-size: 10px;">2.4 MB/s</div>
+            </div>
+            <div class="progress-track">
+                <div class="progress-fill"></div>
+            </div>
+        </div>
+    </footer>
+
+    <div id="notification-container"></div>
+
+</body>
+</html>

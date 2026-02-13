@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexus Platform - Community</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="js/script.js" defer></script>
+</head>
+<body>
+
+    <header class="header">
+        <div class="logo">
+            <svg viewBox="0 0 24 24" width="28" height="28"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+            NEXUS
+        </div>
+        <nav class="nav-links">
+            <div class="nav-item" data-page="/">Главная</div>
+            <div class="nav-item" data-page="/shop">Магазин</div>
+            <div class="nav-item" data-page="/community">Сообщество</div>
+            <div class="nav-item" data-page="/stream">Стримы</div>
+            <div class="nav-item" data-page="/profile">Профиль</div>
+            <div class="nav-item" data-page="/admin">Админ</div>
+        </nav>
+        <div class="user-profile" data-page="/profile" title="Открыть профиль">
+            <div class="balance">4 500 ₸</div>
+            <div class="avatar" style="background-image: url('https://placehold.co/100x100/4c1d95/FFF?text=U'); background-size: cover;"></div>
+        </div>
+    </header>
+
+    <div class="main-container">
+        <main class="content-area">
+            <div class="section-title">Обсуждения сообщества</div>
+            <div style="display: flex; flex-direction: column; gap: 15px;">
+                <div style="background: var(--bg-card); padding: 15px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); cursor: pointer; transition: 0.2s;" onclick="window.showNotification('Открыт пост: Обновление v2.0', 'info')">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                        <div style="font-weight: bold; color: white; font-size: 15px;">Обновление v2.0 - Баги и фиксы</div>
+                        <div style="color: var(--accent-purple); font-size: 12px; font-weight: bold; background: rgba(124, 58, 237, 0.1); padding: 2px 8px; border-radius: 4px;">Pinned</div>
+                    </div>
+                    <div style="display: flex; gap: 15px; font-size: 12px; color: #6b7280;">
+                        <span>Автор: <span style="color: var(--text-link);">Developer</span></span>
+                        <span>👁 450</span>
+                        <span>💬 12</span>
+                    </div>
+                </div>
+
+                <div style="background: var(--bg-card); padding: 15px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); cursor: pointer; transition: 0.2s;" onclick="window.showNotification('Открыт пост: Босс в Elden Ring', 'info')">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                        <div style="font-weight: bold; color: white; font-size: 15px;">Как пройти уровень с боссом в Elden Ring?</div>
+                        <div style="color: var(--accent-purple); font-size: 12px; font-weight: bold; background: rgba(124, 58, 237, 0.1); padding: 2px 8px; border-radius: 4px;">Discussion</div>
+                    </div>
+                    <div style="display: flex; gap: 15px; font-size: 12px; color: #6b7280;">
+                        <span>Автор: <span style="color: var(--text-link);">NoobSlayer</span></span>
+                        <span>👁 23</span>
+                        <span>💬 2</span>
+                    </div>
+                </div>
+
+                <div style="background: var(--bg-card); padding: 15px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); cursor: pointer; transition: 0.2s;" onclick="window.showNotification('Открыт пост: Поиск команды', 'info')">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                        <div style="font-weight: bold; color: white; font-size: 15px;">Поиск команды для турнира CS2</div>
+                        <div style="color: var(--accent-purple); font-size: 12px; font-weight: bold; background: rgba(124, 58, 237, 0.1); padding: 2px 8px; border-radius: 4px;">LFG</div>
+                    </div>
+                    <div style="display: flex; gap: 15px; font-size: 12px; color: #6b7280;">
+                        <span>Автор: <span style="color: var(--text-link);">ProGamer_UA</span></span>
+                        <span>👁 5</span>
+                        <span>💬 0</span>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="notification-container"></div>
+</body>
+</html>

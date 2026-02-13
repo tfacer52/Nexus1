@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexus Platform - Shop</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="js/script.js" defer></script>
+</head>
+<body>
+
+    <header class="header">
+        <div class="logo">
+            <svg viewBox="0 0 24 24" width="28" height="28"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+            NEXUS
+        </div>
+        <nav class="nav-links">
+            <div class="nav-item" data-page="/">Главная</div>
+            <div class="nav-item" data-page="/shop">Магазин</div>
+            <div class="nav-item" data-page="/community">Сообщество</div>
+            <div class="nav-item" data-page="/stream">Стримы</div>
+            <div class="nav-item" data-page="/profile">Профиль</div>
+            <div class="nav-item" data-page="/admin">Админ</div>
+        </nav>
+        <div class="user-profile" data-page="/profile" title="Открыть профиль">
+            <div class="balance">4 500 ₸</div>
+            <div class="avatar" style="background-image: url('https://placehold.co/100x100/4c1d95/FFF?text=U'); background-size: cover;"></div>
+        </div>
+    </header>
+
+    <div class="main-container">
+        <main class="content-area">
+            <div class="hero-banner" style="background-image: linear-gradient(to right, #0b0c15 30%, transparent), url('https://placehold.co/1200x500/b91c1c/FFF?text=Mars+Warfare'); height: 300px;">
+                <div class="hero-content">
+                    <div class="hero-logo" style="color: #ef4444; text-shadow: 0 0 20px rgba(239, 68, 68, 0.6);">Red Planet: War</div>
+                    <p class="hero-desc">
+                        Вступайте в битву за ресурсы Марса. Новая техника, разрушаемое окружение и масштабные сражения 64 на 64 игрока.
+                    </p>
+                    <div class="btn-group">
+                        <button class="btn btn-primary" onclick="window.showNotification('Добавлено в корзину', 'success')">
+                            Купить - 14 900 ₸
+                        </button>
+                        <button class="btn btn-secondary">В список желаемого</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section-title">Лидеры продаж</div>
+            <div class="games-grid">
+                <div class="game-card" style="background: linear-gradient(135deg, #1c1c2e 0%, #1e1b4b 100%);">
+                    <div class="card-cover" style="background-color: #0f172a; height: 180px; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: bold; color: #38bdf8;">
+                        SCI-FI
+                    </div>
+                    <div class="card-info">
+                        <div class="card-title">Starfield: Premium</div>
+                        <div class="card-meta">
+                            <span class="tag-price">-20%</span>
+                            <span style="color: var(--accent-yellow); font-weight: bold;">18 000 ₸</span>
+                        </div>
+                        <button class="btn btn-primary" style="width: 100%; margin-top: 10px; padding: 6px; font-size: 12px;" onclick="window.showNotification('Starfield добавлен', 'success')">В корзину</button>
+                    </div>
+                </div>
+
+                <div class="game-card">
+                    <div class="card-cover" style="background-color: #27272a; height: 180px; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: bold; color: #a3a3a3;">
+                        SOULS
+                    </div>
+                    <div class="card-info">
+                        <div class="card-title">Dark Souls III</div>
+                        <div class="card-meta">
+                            <span style="color: var(--text-muted);">Хит</span>
+                            <span style="color: var(--accent-yellow); font-weight: bold;">9 500 ₸</span>
+                        </div>
+                        <button class="btn btn-primary" style="width: 100%; margin-top: 10px; padding: 6px; font-size: 12px;" onclick="window.showNotification('Dark Souls добавлен', 'success')">В корзину</button>
+                    </div>
+                </div>
+
+                <div class="game-card">
+                    <div class="card-cover" style="background-color: #451a03; height: 180px; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: bold; color: #fb923c;">
+                        RALLY
+                    </div>
+                    <div class="card-info">
+                        <div class="card-title">Dirt Rally 2.0</div>
+                        <div class="card-meta">
+                            <span class="tag-price">-50%</span>
+                            <span style="color: var(--accent-yellow); font-weight: bold;">2 400 ₸</span>
+                        </div>
+                        <button class="btn btn-primary" style="width: 100%; margin-top: 10px; padding: 6px; font-size: 12px;" onclick="window.showNotification('Dirt Rally добавлен', 'success')">В корзину</button>
+                    </div>
+                </div>
+
+                <div class="game-card">
+                    <div class="card-cover" style="background-color: #111; height: 180px; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: bold; color: #fff;">
+                        HORROR
+                    </div>
+                    <div class="card-info">
+                        <div class="card-title">Resident Evil 4</div>
+                        <div class="card-meta">
+                            <span style="color: var(--text-muted);">New</span>
+                            <span style="color: var(--accent-yellow); font-weight: bold;">12 000 ₸</span>
+                        </div>
+                        <button class="btn btn-primary" style="width: 100%; margin-top: 10px; padding: 6px; font-size: 12px;" onclick="window.showNotification('RE4 добавлен', 'success')">В корзину</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="notification-container"></div>
+</body>
+</html>

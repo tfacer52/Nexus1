@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexus Platform - Profile</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="js/script.js" defer></script>
+</head>
+<body>
+    <header class="header">
+        <div class="logo">
+            <svg viewBox="0 0 24 24" width="28" height="28"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+            NEXUS
+        </div>
+        <nav class="nav-links">
+            <div class="nav-item" data-page="/">Главная</div>
+            <div class="nav-item" data-page="/shop">Магазин</div>
+            <div class="nav-item" data-page="/community">Сообщество</div>
+            <div class="nav-item" data-page="/stream">Стримы</div>
+            <div class="nav-item" data-page="/profile">Профиль</div>
+            <div class="nav-item" data-page="/admin">Админ</div>
+        </nav>
+        <div class="user-profile" data-page="/profile" title="Открыть профиль">
+            <div class="balance">4 500 ₸</div>
+            <div class="avatar" style="background-image: url('https://placehold.co/100x100/4c1d95/FFF?text=U'); background-size: cover;"></div>
+        </div>
+    </header>
+
+    <div class="main-container">
+        <main class="content-area">
+            <div class="section-title">Профиль пользователя</div>
+
+            <div class="panel-grid">
+                <section class="panel-card">
+                    <div class="panel-subtitle">Информация</div>
+                    <div class="profile-meta-row"><span>Роль:</span> <strong id="profileRole">user</strong></div>
+                    <div class="profile-meta-row"><span>Баланс:</span> <strong id="profileBalance">0 ₸</strong></div>
+                </section>
+
+                <section class="panel-card">
+                    <div class="panel-subtitle">Редактирование профиля</div>
+                    <form id="profileForm" class="stack-form">
+                        <label>
+                            Никнейм
+                            <input id="profileUsername" type="text" class="admin-input" required>
+                        </label>
+                        <label>
+                            Статус
+                            <input id="profileStatus" type="text" class="admin-input" placeholder="online / away / invisible">
+                        </label>
+                        <label>
+                            О себе
+                            <textarea id="profileBio" class="admin-input" rows="4" placeholder="Короткое описание"></textarea>
+                        </label>
+                        <button type="submit" class="btn btn-primary">Сохранить профиль</button>
+                    </form>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <div id="notification-container"></div>
+</body>
+</html>
