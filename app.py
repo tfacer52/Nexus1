@@ -5,6 +5,7 @@ import hashlib
 import sqlite3
 import secrets
 import os
+import shutil
 import random
 import string
 from datetime import datetime
@@ -18,7 +19,10 @@ CORS(app)
 
 socketio = SocketIO(app, cors_allowed_origins="*")
 
-DB_FILE = 'nexus.db'
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DATA_DIR = os.path.join(BASE_DIR, 'data')
+os.makedirs(DATA_DIR, exist_ok=True)
+DB_FILE = os.path.join(DATA_DIR, 'nexus.db')
 SESSIONS = {}
 PING_PONG = RetroPingPongGame()
 ONLINE_USERS = {}
@@ -28,6 +32,28 @@ SID_PONG_ROOM = {}
 PONG_ROOMS = {}
 PONG_LOOP_STARTED = False
 GUEST_COUNTER = 1
+
+
+def ensure_db_location():
+    """
+    Гарантирует стабильное местоположение БД, чтобы файл не "терялся"
+    при запуске приложения из разных рабочих директорий.
+    """
+    legacy_db = os.path.join(BASE_DIR, 'nexus.db')
+    if not os.path.exists(DB_FILE) and os.path.exists(legacy_db):
+        shutil.copy2(legacy_db, DB_FILE)
+
+
+def create_db_backup():
+    """Создает резервную копию БД при старте сервера."""
+    if not os.path.exists(DB_FILE):
+        return
+
+    backup_dir = os.path.join(DATA_DIR, 'backups')
+    os.makedirs(backup_dir, exist_ok=True)
+    stamp = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
+    backup_path = os.path.join(backup_dir, f'nexus_{stamp}.db')
+    shutil.copy2(DB_FILE, backup_path)
 
 
 def create_pong_room(room_id):
@@ -185,6 +211,10 @@ def hash_password(password):
 def get_db_connection():
     conn = sqlite3.connect(DB_FILE)
     conn.row_factory = sqlite3.Row
+    conn.execute('PRAGMA journal_mode=WAL;')
+    conn.execute('PRAGMA synchronous=NORMAL;')
+    conn.execute('PRAGMA foreign_keys=ON;')
+    conn.execute('PRAGMA busy_timeout=5000;')
     return conn
 
 # Инициализация БД
@@ -255,7 +285,9 @@ def init_db():
 
         conn.commit()
 
+ensure_db_location()
 init_db()
+create_db_backup()
 
 # --- Auth Helper ---
 def get_current_user():
@@ -279,6 +311,18 @@ def get_online_list_payload():
 
 def emit_online_users():
     socketio.emit('online_users', get_online_list_payload())
+
+
+def emit_admin_refresh():
+    socketio.emit('admin_refresh', {
+        'server_time': datetime.utcnow().isoformat(timespec='milliseconds') + 'Z'
+    })
+
+
+def emit_social_refresh():
+    socketio.emit('social_refresh', {
+        'server_time': datetime.utcnow().isoformat(timespec='milliseconds') + 'Z'
+    })
 
 
 def emit_handshake(user):
@@ -318,6 +362,8 @@ def register():
         token = secrets.token_hex(24)
         user_obj = {'id': user_id, 'username': username, 'role': 'user'}
         SESSIONS[token] = user_obj
+        emit_admin_refresh()
+        emit_social_refresh()
         return jsonify({'token': token, 'user': user_obj}), 201
     except sqlite3.IntegrityError:
         return jsonify({'error': 'Пользователь уже существует'}), 409
@@ -359,6 +405,11 @@ def profile():
                      (data['username'], data.get('status', 'online'), data.get('bio', ''), user_session['id']))
         conn.commit()
     SESSIONS[request.headers.get('Authorization').replace('Bearer ', '')]['username'] = data['username']
+    if user_session['id'] in ONLINE_USERS:
+        ONLINE_USERS[user_session['id']]['username'] = data['username']
+    emit_online_users()
+    emit_admin_refresh()
+    emit_social_refresh()
     return jsonify({'message': 'Обновлено'})
 
 # --- API ADMIN ---
@@ -410,6 +461,8 @@ def add_task():
             (title, task_type)
         )
         conn.commit()
+
+    emit_admin_refresh()
 
     return jsonify({'message': 'Task created'}), 201
 
@@ -534,6 +587,8 @@ def send_friend_request():
         )
         conn.commit()
 
+    emit_social_refresh()
+
     return jsonify({'message': 'Заявка отправлена'})
 
 
@@ -584,6 +639,8 @@ def accept_friend_request(req_id):
         )
         conn.commit()
 
+    emit_social_refresh()
+
     return jsonify({'message': 'Заявка принята'})
 
 
@@ -604,6 +661,8 @@ def reject_friend_request(req_id):
             return jsonify({'error': 'Заявка уже обработана'}), 400
         conn.execute("UPDATE friend_requests SET status = 'rejected' WHERE id = ?", (req_id,))
         conn.commit()
+
+    emit_social_refresh()
 
     return jsonify({'message': 'Заявка отклонена'})
 

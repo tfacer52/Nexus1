@@ -2,6 +2,7 @@ const AUTH_TOKEN_KEY = 'nexus_auth_token';
 let socialSocket = null;
 let currentRoom = 'global';
 let selectedPrivatePeerId = null;
+let profileRealtimeBound = false;
 
 document.addEventListener('DOMContentLoaded', () => {
     setupNavigation();
@@ -179,6 +180,10 @@ async function initSocialFeatures() {
     const roomSelect = document.getElementById('streamRoomSelect');
     const token = getToken();
 
+    if (token && typeof window.io === 'function' && !socialSocket) {
+        socialSocket = window.io({ auth: { token } });
+    }
+
     if (!chatInput || !sendButton || !chatMessages) return;
 
     if (!token) {
@@ -199,8 +204,7 @@ async function initSocialFeatures() {
     } catch (_) {}
 
     // Real-time через Socket.IO
-    if (typeof window.io === 'function') {
-        socialSocket = window.io({ auth: { token } });
+    if (socialSocket) {
 
         socialSocket.on('chat_history', (messages) => {
             chatMessages.innerHTML = '';
@@ -391,6 +395,29 @@ async function initProfileSocial() {
     // expose for socket callback
     window.loadPrivateMessages = loadPrivateMessages;
 
+    const token = getToken();
+    if (token && typeof window.io === 'function' && !socialSocket) {
+        socialSocket = window.io({ auth: { token } });
+    }
+
+    if (socialSocket && !profileRealtimeBound) {
+        profileRealtimeBound = true;
+
+        socialSocket.on('social_refresh', async () => {
+            await renderIncomingRequests();
+            await renderProfileFriends();
+            await loadFriendsPanel();
+            if (selectedPrivatePeerId) {
+                await loadPrivateMessages(selectedPrivatePeerId);
+            }
+        });
+
+        socialSocket.on('online_users', async () => {
+            await renderProfileFriends();
+            await loadFriendsPanel();
+        });
+    }
+
     await renderIncomingRequests();
     await renderProfileFriends();
 }
@@ -577,6 +604,17 @@ async function initAdminPage() {
     };
 
     await loadAdminData();
+
+    const token = getToken();
+    if (token && typeof window.io === 'function') {
+        const adminSocket = window.io({ auth: { token } });
+        adminSocket.on('admin_refresh', () => {
+            loadAdminData();
+        });
+        adminSocket.on('online_users', () => {
+            loadAdminData();
+        });
+    }
 
     addTaskForm?.addEventListener('submit', async (e) => {
         e.preventDefault();
