@@ -521,3 +521,125 @@ body {
     font-size: 11px;
     letter-spacing: 0.5px;
 }
+
+/* --- АДАПТИВНОСТЬ (RESPONSIVE DESIGN) --- */
+
+/* 1. Планшеты и небольшие ноутбуки (до 1024px) */
+@media (max-width: 1024px) {
+    .library-sidebar {
+        width: 220px; /* Сужаем сайдбар */
+    }
+    .friends-sidebar {
+        width: 240px;
+    }
+    .hero-logo {
+        font-size: 36px;
+    }
+}
+
+/* 2. Мобильные устройства (до 768px) */
+@media (max-width: 768px) {
+    body {
+        overflow-y: auto; /* Разрешаем общую прокрутку */
+        height: auto;
+    }
+
+    .header {
+        padding: 0 15px;
+        height: auto;
+        flex-direction: column;
+        padding-bottom: 15px;
+    }
+
+    .logo {
+        margin: 15px 0;
+        font-size: 22px;
+    }
+
+    .nav-links {
+        width: 100%;
+        justify-content: center;
+        overflow-x: auto; /* Скролл меню, если кнопок много */
+        padding-bottom: 5px;
+    }
+
+    .main-container {
+        flex-direction: column; /* Сайдбары встают друг под друга */
+        overflow: visible;
+    }
+
+    .library-sidebar, .friends-sidebar {
+        width: 100%;
+        height: auto;
+        border: none;
+        border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .content-area {
+        padding: 20px;
+        background: var(--bg-base);
+    }
+
+    .hero-banner {
+        height: 250px;
+        padding: 20px;
+        margin-bottom: 30px;
+    }
+
+    .hero-logo {
+        font-size: 28px;
+    }
+
+    .hero-desc {
+        display: none; /* Скрываем длинное описание на мобилках */
+    }
+
+    .games-grid {
+        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); /* Карточки чуть меньше */
+        gap: 15px;
+    }
+
+    .download-bar {
+        position: sticky;
+        bottom: 0;
+        flex-direction: column;
+        height: auto;
+        padding: 10px;
+        gap: 10px;
+    }
+
+    .progress-track {
+        width: 100%;
+    }
+}
+
+/* 3. Маленькие телефоны (до 480px) */
+@media (max-width: 480px) {
+    .logo {
+        margin-right: 0;
+    }
+    
+    .user-profile .balance {
+        display: none; /* Скрываем баланс, оставляем только аватар для экономии места */
+    }
+
+    .btn {
+        width: 100%; /* Кнопки во всю ширину */
+        justify-content: center;
+    }
+
+    .btn-group {
+        flex-direction: column;
+        width: 100%;
+    }
+
+    .games-grid {
+        grid-template-columns: 1fr; /* Одна колонка на самых маленьких экранах */
+    }
+    
+    .toast {
+        width: calc(100% - 40px);
+        right: 20px;
+        left: 20px;
+    }
+}
