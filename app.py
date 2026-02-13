@@ -24,6 +24,7 @@ SID_ROOM = {}
 SID_PONG_ROOM = {}
 PONG_ROOMS = {}
 PONG_LOOP_STARTED = False
+GUEST_COUNTER = 1
 
 
 def create_pong_room(room_id):
@@ -275,6 +276,14 @@ def get_online_list_payload():
 
 def emit_online_users():
     socketio.emit('online_users', get_online_list_payload())
+
+
+def emit_handshake(user):
+    emit('site_handshake', {
+        'ok': True,
+        'server_time': datetime.utcnow().isoformat(timespec='milliseconds') + 'Z',
+        'user': {'id': user['id'], 'username': user['username']}
+    })
 
 # --- РОУТИНГ СТРАНИЦ ---
 @app.route('/')
@@ -685,18 +694,11 @@ def pong_game():
 
 @app.route('/api/pong/rooms', methods=['GET'])
 def pong_rooms_list():
-    user = get_current_user()
-    if not user:
-        return jsonify({'error': 'Unauthorized'}), 401
     return jsonify(get_pong_rooms_payload())
 
 
 @app.route('/api/pong/rooms', methods=['POST'])
 def pong_rooms_create():
-    user = get_current_user()
-    if not user:
-        return jsonify({'error': 'Unauthorized'}), 401
-
     data = request.json or {}
     room_id = str(data.get('room', '')).strip().lower()
 
@@ -712,7 +714,7 @@ def pong_rooms_create():
 
 @socketio.on('connect')
 def handle_connect(auth):
-    global PONG_LOOP_STARTED
+    global PONG_LOOP_STARTED, GUEST_COUNTER
 
     token = None
     if isinstance(auth, dict):
@@ -720,8 +722,10 @@ def handle_connect(auth):
 
     user = user_from_token(token)
     if not user:
-        disconnect()
-        return
+        # Гостевой вход для страниц real-time (например, Pong)
+        guest_id = -GUEST_COUNTER
+        GUEST_COUNTER += 1
+        user = {'id': guest_id, 'username': f'Guest{abs(guest_id)}', 'role': 'guest'}
 
     uid = user['id']
     ONLINE_USERS[uid] = {'username': user['username'], 'sid': request.sid}
@@ -731,6 +735,7 @@ def handle_connect(auth):
     join_room('room:global')
 
     emit_online_users()
+    emit_handshake(user)
 
     with get_db_connection() as conn:
         rows = conn.execute(
@@ -741,6 +746,43 @@ def handle_connect(auth):
     if not PONG_LOOP_STARTED:
         socketio.start_background_task(pong_loop)
         PONG_LOOP_STARTED = True
+
+
+@socketio.on('client_handshake')
+def handle_client_handshake(payload):
+    uid = SID_TO_USER.get(request.sid)
+    user = ONLINE_USERS.get(uid, {'username': 'Unknown'})
+    emit('handshake_ack', {
+        'ok': True,
+        'page': str((payload or {}).get('page', 'unknown')),
+        'client_time': (payload or {}).get('client_time'),
+        'server_time': datetime.utcnow().isoformat(timespec='milliseconds') + 'Z',
+        'username': user.get('username')
+    })
+
+
+@socketio.on('sync_ping')
+def handle_sync_ping(payload):
+    emit('sync_pong', {
+        'client_ts': (payload or {}).get('client_ts'),
+        'server_ts': datetime.utcnow().timestamp() * 1000,
+        'echo': (payload or {}).get('echo')
+    })
+
+
+@socketio.on('sync_heartbeat')
+def handle_sync_heartbeat(payload):
+    room_id = SID_PONG_ROOM.get(request.sid)
+    players_count = 0
+    if room_id and room_id in PONG_ROOMS:
+        players_count = len(PONG_ROOMS[room_id]['clients'])
+
+    emit('sync_heartbeat_ack', {
+        'server_time': datetime.utcnow().isoformat(timespec='milliseconds') + 'Z',
+        'room': room_id,
+        'players_count': players_count,
+        'client_time': (payload or {}).get('client_time')
+    })
 
 
 @socketio.on('disconnect')

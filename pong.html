@@ -72,6 +72,12 @@
                     <div style="font-size:12px; color:var(--text-muted); margin-bottom:8px;">Активные комнаты</div>
                     <div id="pongRoomsList" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
                 </div>
+                <div style="width:100%; max-width:800px; display:flex; gap:12px; font-size:12px; color:var(--text-muted);">
+                    <div>Handshake: <strong id="hsLabel">...</strong></div>
+                    <div>Ping: <strong id="pingLabel">-</strong></div>
+                    <div>Sync: <strong id="syncLabel">-</strong></div>
+                    <div>Status: <strong id="statusLabel">init</strong></div>
+                </div>
                 <canvas id="pongCanvas" width="800" height="500"></canvas>
             </div>
         </main>
@@ -90,6 +96,10 @@
         const roomLabel = document.getElementById('roomLabel');
         const sideLabel = document.getElementById('sideLabel');
         const roomsList = document.getElementById('pongRoomsList');
+        const hsLabel = document.getElementById('hsLabel');
+        const pingLabel = document.getElementById('pingLabel');
+        const syncLabel = document.getElementById('syncLabel');
+        const statusLabel = document.getElementById('statusLabel');
 
         const token = localStorage.getItem('nexus_auth_token');
         let socket = null;
@@ -138,8 +148,43 @@
 
         if (!token || typeof io !== 'function') {
             scoreLabel.textContent = 'Требуется вход';
+            statusLabel.textContent = 'no-auth-or-io';
         } else {
             socket = io({ auth: { token } });
+
+            socket.on('connect', () => {
+                statusLabel.textContent = 'connected';
+                socket.emit('client_handshake', {
+                    page: 'pong',
+                    client_time: new Date().toISOString()
+                });
+            });
+
+            socket.on('disconnect', () => {
+                statusLabel.textContent = 'disconnected';
+            });
+
+            socket.on('connect_error', (err) => {
+                statusLabel.textContent = `connect_error: ${err?.message || 'unknown'}`;
+            });
+
+            socket.on('site_handshake', () => {
+                hsLabel.textContent = 'site-ok';
+            });
+
+            socket.on('handshake_ack', (data) => {
+                hsLabel.textContent = data?.ok ? 'ack-ok' : 'ack-fail';
+            });
+
+            socket.on('sync_pong', (data) => {
+                const now = Date.now();
+                const rtt = Math.max(0, now - Number(data?.client_ts || now));
+                pingLabel.textContent = `${rtt} ms`;
+            });
+
+            socket.on('sync_heartbeat_ack', (data) => {
+                syncLabel.textContent = `room=${data?.room || '-'} users=${data?.players_count ?? 0}`;
+            });
 
             socket.on('pong_joined', (data) => {
                 joinedRoom = data.room;
@@ -217,6 +262,7 @@
             if (!socket) return;
             const room = (roomInput.value || 'public').trim().toLowerCase();
             socket.emit('pong_join', { room });
+            statusLabel.textContent = `join:${room}`;
         });
 
         createBtn.addEventListener('click', async () => {
@@ -229,9 +275,10 @@
                     body: JSON.stringify({ room })
                 });
                 roomInput.value = payload.room;
+                statusLabel.textContent = `created:${payload.room}`;
                 joinBtn.click();
             } catch (err) {
-                console.error(err);
+                statusLabel.textContent = `create_error:${err.message || 'unknown'}`;
             }
         });
 
@@ -242,6 +289,12 @@
 
         // auto-join default
         joinBtn.click();
+
+        setInterval(() => {
+            if (!socket || !socket.connected) return;
+            socket.emit('sync_ping', { client_ts: Date.now(), echo: 'pong-page' });
+            socket.emit('sync_heartbeat', { client_time: new Date().toISOString() });
+        }, 3000);
     </script>
 </body>
 </html>
