@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Nexus Platform - Retro Ping Pong 2D</title>
     <link rel="stylesheet" href="css/style.css">
+    <script src="/socket.io/socket.io.js"></script>
     <script src="js/script.js" defer></script>
     <style>
         .pong-wrap {
@@ -57,7 +58,11 @@
             <div class="pong-wrap">
                 <div class="pong-hud">
                     <div>Счет: <strong id="scoreLabel">0 : 0</strong></div>
+                    <div>Комната: <strong id="roomLabel">public</strong></div>
+                    <div>Сторона: <strong id="sideLabel">-</strong></div>
                     <div style="display:flex; gap:10px; align-items:center;">
+                        <input id="pongRoomInput" class="admin-input" style="width:120px; padding:8px; font-size:12px;" placeholder="room id" value="public">
+                        <button id="pongJoinBtn" class="btn btn-secondary" style="padding:8px 14px; font-size:12px;">Войти</button>
                         <span style="color: var(--text-muted); font-size: 13px;">Управление: W/S или ↑/↓</span>
                         <button id="pongResetBtn" class="btn btn-secondary" style="padding:8px 14px; font-size:12px;">Новая игра</button>
                     </div>
@@ -74,28 +79,55 @@
         const ctx = canvas.getContext('2d');
         const scoreLabel = document.getElementById('scoreLabel');
         const resetBtn = document.getElementById('pongResetBtn');
+        const joinBtn = document.getElementById('pongJoinBtn');
+        const roomInput = document.getElementById('pongRoomInput');
+        const roomLabel = document.getElementById('roomLabel');
+        const sideLabel = document.getElementById('sideLabel');
 
+        const token = localStorage.getItem('nexus_auth_token');
+        let socket = null;
         let gameState = null;
-        let direction = 0;
+        let currentDirection = 0;
+        let mySide = 'spectator';
+        let joinedRoom = 'public';
+
+        if (!token || typeof io !== 'function') {
+            scoreLabel.textContent = 'Требуется вход';
+        } else {
+            socket = io({ auth: { token } });
+
+            socket.on('pong_joined', (data) => {
+                joinedRoom = data.room;
+                mySide = data.side;
+                roomLabel.textContent = joinedRoom;
+                sideLabel.textContent = mySide;
+            });
+
+            socket.on('pong_state', (state) => {
+                gameState = state;
+                scoreLabel.textContent = `${state.left_score} : ${state.right_score}`;
+                draw();
+            });
+        }
+
+        function sendDirection(dir) {
+            if (!socket) return;
+            if (mySide !== 'left' && mySide !== 'right') return;
+            if (currentDirection === dir) return;
+            currentDirection = dir;
+            socket.emit('pong_input', { direction: dir });
+        }
 
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'w' || e.key === 'W' || e.key === 'ArrowUp') direction = -1;
-            if (e.key === 's' || e.key === 'S' || e.key === 'ArrowDown') direction = 1;
+            if (['w', 'W', 'ArrowUp'].includes(e.key)) sendDirection(-1);
+            if (['s', 'S', 'ArrowDown'].includes(e.key)) sendDirection(1);
         });
 
         document.addEventListener('keyup', (e) => {
-            if (['w', 'W', 'ArrowUp', 's', 'S', 'ArrowDown'].includes(e.key)) direction = 0;
+            if (['w', 'W', 'ArrowUp', 's', 'S', 'ArrowDown'].includes(e.key)) {
+                sendDirection(0);
+            }
         });
-
-        async function fetchState() {
-            const res = await fetch('/api/pong/step', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ direction })
-            });
-            gameState = await res.json();
-            scoreLabel.textContent = `${gameState.player_score} : ${gameState.ai_score}`;
-        }
 
         function drawCenterLine() {
             ctx.strokeStyle = '#7c3aed';
@@ -115,13 +147,13 @@
 
             drawCenterLine();
 
-            // left paddle (player)
+            // left paddle
             ctx.fillStyle = '#fbbf24';
-            ctx.fillRect(18, gameState.player_y, gameState.paddle_w, gameState.paddle_h);
+            ctx.fillRect(18, gameState.left_y, gameState.paddle_w, gameState.paddle_h);
 
-            // right paddle (ai)
+            // right paddle
             ctx.fillStyle = '#a78bfa';
-            ctx.fillRect(canvas.width - 30, gameState.ai_y, gameState.paddle_w, gameState.paddle_h);
+            ctx.fillRect(canvas.width - 30, gameState.right_y, gameState.paddle_w, gameState.paddle_h);
 
             // ball
             ctx.fillStyle = '#ffffff';
@@ -130,21 +162,19 @@
             ctx.fill();
         }
 
-        async function gameLoop() {
-            try {
-                await fetchState();
-                draw();
-            } catch (err) {
-                console.error('Pong error:', err);
-            }
-            requestAnimationFrame(gameLoop);
-        }
-
-        resetBtn.addEventListener('click', async () => {
-            await fetch('/api/pong/reset', { method: 'POST' });
+        joinBtn.addEventListener('click', () => {
+            if (!socket) return;
+            const room = (roomInput.value || 'public').trim().toLowerCase();
+            socket.emit('pong_join', { room });
         });
 
-        gameLoop();
+        resetBtn.addEventListener('click', () => {
+            if (!socket) return;
+            socket.emit('pong_reset');
+        });
+
+        // auto-join default
+        joinBtn.click();
     </script>
 </body>
 </html>

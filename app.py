@@ -19,6 +19,138 @@ PING_PONG = RetroPingPongGame()
 ONLINE_USERS = {}
 SID_TO_USER = {}
 SID_ROOM = {}
+SID_PONG_ROOM = {}
+PONG_ROOMS = {}
+PONG_LOOP_STARTED = False
+
+
+def create_pong_room(room_id):
+    return {
+        'id': room_id,
+        'width': 800,
+        'height': 500,
+        'paddle_h': 90,
+        'paddle_w': 12,
+        'left_y': 205.0,
+        'right_y': 205.0,
+        'left_input': 0,
+        'right_input': 0,
+        'ball_x': 400.0,
+        'ball_y': 250.0,
+        'ball_vx': 5.0,
+        'ball_vy': 3.0,
+        'left_score': 0,
+        'right_score': 0,
+        'left_player': None,
+        'right_player': None,
+        'clients': {}  # sid -> {'user_id', 'username', 'side'}
+    }
+
+
+def reset_pong_ball(room, direction=1):
+    room['ball_x'] = room['width'] / 2
+    room['ball_y'] = room['height'] / 2
+    room['ball_vx'] = abs(room['ball_vx']) * (1 if direction >= 0 else -1)
+    room['ball_vy'] = 3.0 if room['ball_vy'] >= 0 else -3.0
+
+
+def get_pong_public_state(room):
+    players = {
+        'left': room['clients'][room['left_player']]['username'] if room['left_player'] in room['clients'] else None,
+        'right': room['clients'][room['right_player']]['username'] if room['right_player'] in room['clients'] else None,
+    }
+    return {
+        'room': room['id'],
+        'width': room['width'],
+        'height': room['height'],
+        'paddle_h': room['paddle_h'],
+        'paddle_w': room['paddle_w'],
+        'left_y': room['left_y'],
+        'right_y': room['right_y'],
+        'ball_x': room['ball_x'],
+        'ball_y': room['ball_y'],
+        'left_score': room['left_score'],
+        'right_score': room['right_score'],
+        'players': players,
+        'players_count': len(room['clients'])
+    }
+
+
+def step_pong_room(room):
+    paddle_speed = 8
+    room['left_y'] += room['left_input'] * paddle_speed
+    room['right_y'] += room['right_input'] * paddle_speed
+
+    max_y = room['height'] - room['paddle_h']
+    room['left_y'] = max(0, min(max_y, room['left_y']))
+    room['right_y'] = max(0, min(max_y, room['right_y']))
+
+    room['ball_x'] += room['ball_vx']
+    room['ball_y'] += room['ball_vy']
+
+    if room['ball_y'] <= 0 or room['ball_y'] >= room['height']:
+        room['ball_vy'] *= -1
+
+    left_x = 18
+    right_x = room['width'] - 30
+
+    if room['ball_x'] <= left_x + room['paddle_w'] and room['left_y'] <= room['ball_y'] <= room['left_y'] + room['paddle_h']:
+        room['ball_vx'] = abs(room['ball_vx'])
+
+    if room['ball_x'] >= right_x and room['right_y'] <= room['ball_y'] <= room['right_y'] + room['paddle_h']:
+        room['ball_vx'] = -abs(room['ball_vx'])
+
+    if room['ball_x'] < 0:
+        room['right_score'] += 1
+        reset_pong_ball(room, direction=-1)
+    elif room['ball_x'] > room['width']:
+        room['left_score'] += 1
+        reset_pong_ball(room, direction=1)
+
+
+def assign_pong_side(room):
+    if room['left_player'] is None:
+        return 'left'
+    if room['right_player'] is None:
+        return 'right'
+    return 'spectator'
+
+
+def remove_pong_client(sid):
+    room_id = SID_PONG_ROOM.pop(sid, None)
+    if not room_id:
+        return
+
+    room = PONG_ROOMS.get(room_id)
+    if not room:
+        return
+
+    client = room['clients'].pop(sid, None)
+    if not client:
+        return
+
+    side = client.get('side')
+    if side == 'left' and room.get('left_player') == sid:
+        room['left_player'] = None
+        room['left_input'] = 0
+    if side == 'right' and room.get('right_player') == sid:
+        room['right_player'] = None
+        room['right_input'] = 0
+
+    leave_room(f"pong:{room_id}")
+    socketio.emit('pong_state', get_pong_public_state(room), to=f"pong:{room_id}")
+
+
+def pong_loop():
+    while True:
+        for room_id, room in list(PONG_ROOMS.items()):
+            if len(room['clients']) == 0:
+                PONG_ROOMS.pop(room_id, None)
+                continue
+            if room['left_player'] and room['right_player']:
+                step_pong_room(room)
+            socketio.emit('pong_state', get_pong_public_state(room), to=f'pong:{room_id}')
+        socketio.sleep(1 / 60)
 
 def hash_password(password):
     return hashlib.sha256(password.encode('utf-8')).hexdigest()
@@ -529,6 +661,8 @@ def pong_game():
 
 @socketio.on('connect')
 def handle_connect(auth):
+    global PONG_LOOP_STARTED
+
     token = None
     if isinstance(auth, dict):
         token = auth.get('token')
@@ -553,10 +687,16 @@ def handle_connect(auth):
         ).fetchall()
     emit('chat_history', [dict(r) for r in rows][::-1])
 
+    if not PONG_LOOP_STARTED:
+        socketio.start_background_task(pong_loop)
+        PONG_LOOP_STARTED = True
+
 
 @socketio.on('disconnect')
 def handle_disconnect():
     uid = SID_TO_USER.get(request.sid)
+    remove_pong_client(request.sid)
+
     if uid:
         SID_TO_USER.pop(request.sid, None)
         SID_ROOM.pop(request.sid, None)
@@ -611,6 +751,82 @@ def handle_chat_send(payload):
         conn.commit()
 
     socketio.emit('chat_message', msg, to=f"room:{room}")
+
+
+@socketio.on('pong_join')
+def handle_pong_join(payload):
+    uid = SID_TO_USER.get(request.sid)
+    if not uid:
+        return
+
+    room_id = str((payload or {}).get('room', 'public')).strip().lower() or 'public'
+
+    remove_pong_client(request.sid)
+
+    room = PONG_ROOMS.get(room_id)
+    if not room:
+        room = create_pong_room(room_id)
+        PONG_ROOMS[room_id] = room
+
+    side = assign_pong_side(room)
+    room['clients'][request.sid] = {
+        'user_id': uid,
+        'username': ONLINE_USERS.get(uid, {}).get('username', 'Player'),
+        'side': side
+    }
+
+    if side == 'left':
+        room['left_player'] = request.sid
+    elif side == 'right':
+        room['right_player'] = request.sid
+
+    SID_PONG_ROOM[request.sid] = room_id
+    join_room(f"pong:{room_id}")
+
+    emit('pong_joined', {'room': room_id, 'side': side})
+    socketio.emit('pong_state', get_pong_public_state(room), to=f"pong:{room_id}")
+
+
+@socketio.on('pong_input')
+def handle_pong_input(payload):
+    room_id = SID_PONG_ROOM.get(request.sid)
+    if not room_id:
+        return
+    room = PONG_ROOMS.get(room_id)
+    if not room:
+        return
+
+    direction = int((payload or {}).get('direction', 0))
+    direction = -1 if direction < 0 else (1 if direction > 0 else 0)
+
+    client = room['clients'].get(request.sid)
+    if not client:
+        return
+
+    if client['side'] == 'left':
+        room['left_input'] = direction
+    elif client['side'] == 'right':
+        room['right_input'] = direction
+
+
+@socketio.on('pong_reset')
+def handle_pong_reset():
+    room_id = SID_PONG_ROOM.get(request.sid)
+    if not room_id:
+        return
+    room = PONG_ROOMS.get(room_id)
+    if not room:
+        return
+
+    room['left_score'] = 0
+    room['right_score'] = 0
+    room['left_y'] = 205.0
+    room['right_y'] = 205.0
+    room['left_input'] = 0
+    room['right_input'] = 0
+    reset_pong_ball(room, direction=1)
+
+    socketio.emit('pong_state', get_pong_public_state(room), to=f"pong:{room_id}")
     
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8000))
