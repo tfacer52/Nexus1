@@ -5,6 +5,11 @@ import secrets
 import sqlite3
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from urllib.parse import urlparse
+from flask import Flask, request, jsonify, send_from_directory
+from flask_cors import CORS
+
+app = Flask(__name__, static_folder='.')
+CORS(app)
 
 DB_FILE = 'nexus.db'
 SESSIONS = {}

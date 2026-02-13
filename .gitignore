@@ -1,1 +1,3 @@
-nexus.db
+echo "nexus.db" > .gitignore
+echo "__pycache__/" >> .gitignore
+echo ".env" >> .gitignore
