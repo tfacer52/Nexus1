@@ -4,12 +4,17 @@ import secrets
 import os
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
+from flask_socketio import SocketIO, emit
+from game import RetroPingPongGame
 
 app = Flask(__name__, static_folder='.')
 CORS(app)
 
+socketio = SocketIO(app, cors_allowed_origins="*")
+
 DB_FILE = 'nexus.db'
 SESSIONS = {}
+PING_PONG = RetroPingPongGame()
 
 def hash_password(password):
     return hashlib.sha256(password.encode('utf-8')).hexdigest()
@@ -146,6 +151,97 @@ def admin_users():
         users = conn.execute("SELECT id, username, role, balance, status FROM users").fetchall()
     return jsonify([dict(u) for u in users])
 
+@app.route('/api/tasks', methods=['GET'])
+def get_tasks():
+    user = get_current_user()
+    if not user:
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    with get_db_connection() as conn:
+        tasks = conn.execute("SELECT id, title, status, task_type as type FROM tasks").fetchall()
+
+    return jsonify([dict(t) for t in tasks])
+
+@app.route('/api/admin/task', methods=['POST'])
+def add_task():
+    user = get_current_user()
+    if not user or user['role'] != 'admin':
+        return jsonify({'error': 'Forbidden'}), 403
+
+    data = request.json
+    title = data.get('title')
+    task_type = data.get('type', 'general')
+
+    if not title:
+        return jsonify({'error': 'Title required'}), 400
+
+    with get_db_connection() as conn:
+        conn.execute(
+            "INSERT INTO tasks (title, status, task_type) VALUES (?, 'open', ?)",
+            (title, task_type)
+        )
+        conn.commit()
+
+    return jsonify({'message': 'Task created'}), 201
+
+@app.route('/api/admin/broadcast', methods=['POST'])
+def broadcast():
+    user = get_current_user()
+    if not user or user['role'] != 'admin':
+        return jsonify({'error': 'Forbidden'}), 403
+
+    data = request.json
+    message = data.get('message')
+
+    if not message:
+        return jsonify({'error': 'Message required'}), 400
+
+    print(f"[BROADCAST]: {message}")
+
+    return jsonify({'message': 'Broadcast sent'})
+
+@app.route('/api/auth/logout', methods=['POST'])
+def logout():
+    token = request.headers.get('Authorization', '').replace('Bearer ', '').strip()
+    if token in SESSIONS:
+        del SESSIONS[token]
+    return jsonify({'message': 'Logged out'})
+
+# --- RETRO PING PONG API ---
+@app.route('/api/pong/state', methods=['GET'])
+def pong_state():
+    return jsonify(PING_PONG.get_state())
+
+
+@app.route('/api/pong/step', methods=['POST'])
+def pong_step():
+    data = request.json or {}
+    direction = int(data.get('direction', 0))
+    direction = -1 if direction < 0 else (1 if direction > 0 else 0)
+    return jsonify(PING_PONG.step(direction))
+
+
+@app.route('/api/pong/reset', methods=['POST'])
+def pong_reset():
+    PING_PONG.full_reset()
+    return jsonify(PING_PONG.get_state())
+
+
+@app.route('/pong')
+def pong_game():
+    return send_from_directory('.', 'pong.html')
+
+# Обработка движений игрока
+@socketio.on('player_move')
+def handle_move(data):
+    # data содержит {y: значение, side: 'left' или 'right'}
+    emit('opponent_update', data, broadcast=True, include_self=False)
+
+# Синхронизация мяча (обычно делает первый зашедший игрок)
+@socketio.on('ball_sync')
+def handle_ball(data):
+    emit('ball_update', data, broadcast=True, include_self=False)
+    
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8000))
-    app.run(host='0.0.0.0', port=port)
+    socketio.run(app, host='0.0.0.0', port=port, debug=True, use_reloader=False)

@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexus Platform - Retro Ping Pong 2D</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="js/script.js" defer></script>
+    <style>
+        .pong-wrap {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            align-items: center;
+        }
+        #pongCanvas {
+            border: 2px solid var(--accent-purple);
+            border-radius: 12px;
+            background: #05050a;
+            box-shadow: 0 0 25px rgba(124, 58, 237, 0.35);
+            max-width: 100%;
+        }
+        .pong-hud {
+            width: 100%;
+            max-width: 800px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="logo">
+            <svg viewBox="0 0 24 24" width="28" height="28"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+            NEXUS
+        </div>
+        <nav class="nav-links">
+            <div class="nav-item" data-page="/">Главная</div>
+            <div class="nav-item" data-page="/shop">Магазин</div>
+            <div class="nav-item" data-page="/community">Сообщество</div>
+            <div class="nav-item" data-page="/stream">Стримы</div>
+            <div class="nav-item" data-page="/pong">Pong 2D</div>
+            <div class="nav-item" data-page="/profile">Профиль</div>
+            <div class="nav-item" data-page="/admin">Админ</div>
+        </nav>
+        <div class="user-profile" data-page="/profile" title="Открыть профиль">
+            <div class="balance">4 500 ₸</div>
+            <div class="avatar" style="background-image: url('https://placehold.co/100x100/4c1d95/FFF?text=U'); background-size: cover;"></div>
+        </div>
+    </header>
+
+    <div class="main-container">
+        <main class="content-area">
+            <div class="section-title">Retro Ping Pong 2D</div>
+            <div class="pong-wrap">
+                <div class="pong-hud">
+                    <div>Счет: <strong id="scoreLabel">0 : 0</strong></div>
+                    <div style="display:flex; gap:10px; align-items:center;">
+                        <span style="color: var(--text-muted); font-size: 13px;">Управление: W/S или ↑/↓</span>
+                        <button id="pongResetBtn" class="btn btn-secondary" style="padding:8px 14px; font-size:12px;">Новая игра</button>
+                    </div>
+                </div>
+                <canvas id="pongCanvas" width="800" height="500"></canvas>
+            </div>
+        </main>
+    </div>
+
+    <div id="notification-container"></div>
+
+    <script>
+        const canvas = document.getElementById('pongCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreLabel = document.getElementById('scoreLabel');
+        const resetBtn = document.getElementById('pongResetBtn');
+
+        let gameState = null;
+        let direction = 0;
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'w' || e.key === 'W' || e.key === 'ArrowUp') direction = -1;
+            if (e.key === 's' || e.key === 'S' || e.key === 'ArrowDown') direction = 1;
+        });
+
+        document.addEventListener('keyup', (e) => {
+            if (['w', 'W', 'ArrowUp', 's', 'S', 'ArrowDown'].includes(e.key)) direction = 0;
+        });
+
+        async function fetchState() {
+            const res = await fetch('/api/pong/step', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ direction })
+            });
+            gameState = await res.json();
+            scoreLabel.textContent = `${gameState.player_score} : ${gameState.ai_score}`;
+        }
+
+        function drawCenterLine() {
+            ctx.strokeStyle = '#7c3aed';
+            ctx.setLineDash([8, 10]);
+            ctx.beginPath();
+            ctx.moveTo(canvas.width / 2, 0);
+            ctx.lineTo(canvas.width / 2, canvas.height);
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
+
+        function draw() {
+            if (!gameState) return;
+
+            ctx.fillStyle = '#05050a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            drawCenterLine();
+
+            // left paddle (player)
+            ctx.fillStyle = '#fbbf24';
+            ctx.fillRect(18, gameState.player_y, gameState.paddle_w, gameState.paddle_h);
+
+            // right paddle (ai)
+            ctx.fillStyle = '#a78bfa';
+            ctx.fillRect(canvas.width - 30, gameState.ai_y, gameState.paddle_w, gameState.paddle_h);
+
+            // ball
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(gameState.ball_x, gameState.ball_y, 7, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        async function gameLoop() {
+            try {
+                await fetchState();
+                draw();
+            } catch (err) {
+                console.error('Pong error:', err);
+            }
+            requestAnimationFrame(gameLoop);
+        }
+
+        resetBtn.addEventListener('click', async () => {
+            await fetch('/api/pong/reset', { method: 'POST' });
+        });
+
+        gameLoop();
+    </script>
+</body>
+</html>
