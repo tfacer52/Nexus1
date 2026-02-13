@@ -20,6 +20,7 @@
             background: #05050a;
             box-shadow: 0 0 25px rgba(124, 58, 237, 0.35);
             max-width: 100%;
+            touch-action: none;
         }
         .pong-hud {
             width: 100%;
@@ -28,6 +29,35 @@
             justify-content: space-between;
             align-items: center;
             gap: 12px;
+        }
+        .pong-mobile-controls {
+            display: none;
+            width: 100%;
+            max-width: 800px;
+            gap: 12px;
+            justify-content: center;
+            align-items: center;
+        }
+        .pong-mobile-btn {
+            width: 140px;
+            min-height: 56px;
+            border: 1px solid rgba(124, 58, 237, 0.5);
+            border-radius: 12px;
+            background: rgba(124, 58, 237, 0.15);
+            color: #fff;
+            font-weight: 700;
+            font-size: 18px;
+            letter-spacing: 0.5px;
+            touch-action: none;
+            user-select: none;
+        }
+        .pong-mobile-btn:active {
+            background: rgba(124, 58, 237, 0.35);
+        }
+        @media (max-width: 900px) {
+            .pong-mobile-controls {
+                display: flex;
+            }
         }
     </style>
 </head>
@@ -78,6 +108,10 @@
                     <div>Sync: <strong id="syncLabel">-</strong></div>
                     <div>Status: <strong id="statusLabel">init</strong></div>
                 </div>
+                <div class="pong-mobile-controls" aria-label="Мобильное управление ракеткой">
+                    <button id="mobileUpBtn" class="pong-mobile-btn" type="button">▲ Вверх</button>
+                    <button id="mobileDownBtn" class="pong-mobile-btn" type="button">▼ Вниз</button>
+                </div>
                 <canvas id="pongCanvas" width="800" height="500"></canvas>
             </div>
         </main>
@@ -100,6 +134,8 @@
         const pingLabel = document.getElementById('pingLabel');
         const syncLabel = document.getElementById('syncLabel');
         const statusLabel = document.getElementById('statusLabel');
+        const mobileUpBtn = document.getElementById('mobileUpBtn');
+        const mobileDownBtn = document.getElementById('mobileDownBtn');
 
         const token = localStorage.getItem('nexus_auth_token');
         let socket = null;
@@ -223,6 +259,36 @@
                 sendDirection(0);
             }
         });
+
+        function bindMobileHold(button, direction) {
+            if (!button) return;
+
+            const press = (e) => {
+                if (e) e.preventDefault();
+                sendDirection(direction);
+            };
+            const release = (e) => {
+                if (e) e.preventDefault();
+                sendDirection(0);
+            };
+
+            if (window.PointerEvent) {
+                button.addEventListener('pointerdown', press);
+                button.addEventListener('pointerup', release);
+                button.addEventListener('pointercancel', release);
+                button.addEventListener('pointerleave', release);
+            } else {
+                button.addEventListener('touchstart', press, { passive: false });
+                button.addEventListener('touchend', release, { passive: false });
+                button.addEventListener('touchcancel', release, { passive: false });
+                button.addEventListener('mousedown', press);
+                button.addEventListener('mouseup', release);
+                button.addEventListener('mouseleave', release);
+            }
+        }
+
+        bindMobileHold(mobileUpBtn, -1);
+        bindMobileHold(mobileDownBtn, 1);
 
         function drawCenterLine() {
             ctx.strokeStyle = '#7c3aed';
