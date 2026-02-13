@@ -1,3 +1,6 @@
+import eventlet
+eventlet.monkey_patch()
+
 import hashlib
 import sqlite3
 import secrets

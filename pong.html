@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Nexus Platform - Retro Ping Pong 2D</title>
     <link rel="stylesheet" href="css/style.css">
-    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdn.socket.io/4.8.3/socket.io.min.js" integrity="sha384-kzavj5fiMwLKzzD1f8S7TeoVIEi7uKHvbTA3ueZkrzYq75pNQUiUi6Dy98Q3fxb0" crossorigin="anonymous"></script>
     <script src="js/script.js" defer></script>
     <style>
         .pong-wrap {
@@ -137,7 +137,6 @@
         }
 
         async function refreshRooms() {
-            if (!token) return;
             try {
                 const rooms = await apiFetch('/api/pong/rooms');
                 renderRooms(rooms);
@@ -146,11 +145,11 @@
             }
         }
 
-        if (!token || typeof io !== 'function') {
-            scoreLabel.textContent = 'Требуется вход';
-            statusLabel.textContent = 'no-auth-or-io';
+        if (typeof io !== 'function') {
+            scoreLabel.textContent = 'Socket.IO не загружен';
+            statusLabel.textContent = 'no-io';
         } else {
-            socket = io({ auth: { token } });
+            socket = token ? io({ auth: { token } }) : io();
 
             socket.on('connect', () => {
                 statusLabel.textContent = 'connected';
