@@ -325,6 +325,12 @@ def emit_social_refresh():
     })
 
 
+def emit_site_refresh():
+    socketio.emit('site_refresh', {
+        'server_time': datetime.utcnow().isoformat(timespec='milliseconds') + 'Z'
+    })
+
+
 def emit_handshake(user):
     emit('site_handshake', {
         'ok': True,
@@ -364,6 +370,7 @@ def register():
         SESSIONS[token] = user_obj
         emit_admin_refresh()
         emit_social_refresh()
+        emit_site_refresh()
         return jsonify({'token': token, 'user': user_obj}), 201
     except sqlite3.IntegrityError:
         return jsonify({'error': 'Пользователь уже существует'}), 409
@@ -410,6 +417,7 @@ def profile():
     emit_online_users()
     emit_admin_refresh()
     emit_social_refresh()
+    emit_site_refresh()
     return jsonify({'message': 'Обновлено'})
 
 # --- API ADMIN ---
@@ -463,6 +471,7 @@ def add_task():
         conn.commit()
 
     emit_admin_refresh()
+    emit_site_refresh()
 
     return jsonify({'message': 'Task created'}), 201
 
@@ -479,6 +488,12 @@ def broadcast():
         return jsonify({'error': 'Message required'}), 400
 
     print(f"[BROADCAST]: {message}")
+    socketio.emit('broadcast_message', {
+        'message': str(message)[:300],
+        'from': user.get('username', 'Admin'),
+        'server_time': datetime.utcnow().isoformat(timespec='milliseconds') + 'Z'
+    })
+    emit_site_refresh()
 
     return jsonify({'message': 'Broadcast sent'})
 
@@ -492,6 +507,9 @@ def logout():
             del ONLINE_USERS[uid]
             emit_online_users()
         del SESSIONS[token]
+    emit_social_refresh()
+    emit_admin_refresh()
+    emit_site_refresh()
     return jsonify({'message': 'Logged out'})
 
 
@@ -588,6 +606,7 @@ def send_friend_request():
         conn.commit()
 
     emit_social_refresh()
+    emit_site_refresh()
 
     return jsonify({'message': 'Заявка отправлена'})
 
@@ -640,6 +659,7 @@ def accept_friend_request(req_id):
         conn.commit()
 
     emit_social_refresh()
+    emit_site_refresh()
 
     return jsonify({'message': 'Заявка принята'})
 
@@ -663,6 +683,7 @@ def reject_friend_request(req_id):
         conn.commit()
 
     emit_social_refresh()
+    emit_site_refresh()
 
     return jsonify({'message': 'Заявка отклонена'})
 
@@ -726,6 +747,8 @@ def private_send(peer_id):
 
     if peer_id in ONLINE_USERS:
         socketio.emit('private_message', msg, to=ONLINE_USERS[peer_id]['sid'])
+
+    emit_social_refresh()
 
     return jsonify(msg)
 
@@ -798,6 +821,7 @@ def handle_connect(auth):
 
     emit_online_users()
     emit_handshake(user)
+    emit_site_refresh()
 
     with get_db_connection() as conn:
         rows = conn.execute(
@@ -858,6 +882,9 @@ def handle_disconnect():
         if uid in ONLINE_USERS and ONLINE_USERS[uid].get('sid') == request.sid:
             del ONLINE_USERS[uid]
         emit_online_users()
+        emit_social_refresh()
+        emit_admin_refresh()
+        emit_site_refresh()
 
 
 @socketio.on('chat_join')

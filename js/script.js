@@ -3,6 +3,7 @@ let socialSocket = null;
 let currentRoom = 'global';
 let selectedPrivatePeerId = null;
 let profileRealtimeBound = false;
+let globalRealtimeBound = false;
 
 document.addEventListener('DOMContentLoaded', () => {
     setupNavigation();
@@ -18,7 +19,57 @@ document.addEventListener('DOMContentLoaded', () => {
     initAdminPage();
     enforcePageAccess();
     initSocialFeatures();
+    initGlobalRealtime();
 });
+
+function getRealtimeSocket() {
+    if (typeof window.io !== 'function') return null;
+    if (!socialSocket) {
+        const token = getToken();
+        socialSocket = token ? window.io({ auth: { token } }) : window.io();
+    }
+    return socialSocket;
+}
+
+async function refreshHeaderMeta() {
+    const balanceEl = document.querySelector('.user-profile .balance');
+    if (!balanceEl) return;
+    const token = getToken();
+    if (!token) {
+        balanceEl.textContent = '0 ₸';
+        return;
+    }
+    try {
+        const profile = await apiFetch('/api/profile');
+        balanceEl.textContent = `${profile.balance || 0} ₸`;
+    } catch (_) {}
+}
+
+function initGlobalRealtime() {
+    const socket = getRealtimeSocket();
+    if (!socket || globalRealtimeBound) return;
+    globalRealtimeBound = true;
+
+    socket.on('site_refresh', async () => {
+        await setupAuthUi();
+        await refreshHeaderMeta();
+        await loadFriendsPanel();
+
+        if (typeof window.__loadAdminData === 'function') {
+            await window.__loadAdminData();
+        }
+        if (typeof window.__refreshProfileSocial === 'function') {
+            await window.__refreshProfileSocial();
+        }
+    });
+
+    socket.on('broadcast_message', (payload) => {
+        const from = payload?.from || 'Admin';
+        const text = String(payload?.message || '').trim();
+        if (!text) return;
+        showNotification(`📢 ${from}: ${text}`, 'info');
+    });
+}
 
 function getToken() {
     return localStorage.getItem(AUTH_TOKEN_KEY);
@@ -180,9 +231,7 @@ async function initSocialFeatures() {
     const roomSelect = document.getElementById('streamRoomSelect');
     const token = getToken();
 
-    if (token && typeof window.io === 'function' && !socialSocket) {
-        socialSocket = window.io({ auth: { token } });
-    }
+    getRealtimeSocket();
 
     if (!chatInput || !sendButton || !chatMessages) return;
 
@@ -395,10 +444,7 @@ async function initProfileSocial() {
     // expose for socket callback
     window.loadPrivateMessages = loadPrivateMessages;
 
-    const token = getToken();
-    if (token && typeof window.io === 'function' && !socialSocket) {
-        socialSocket = window.io({ auth: { token } });
-    }
+    getRealtimeSocket();
 
     if (socialSocket && !profileRealtimeBound) {
         profileRealtimeBound = true;
@@ -417,6 +463,15 @@ async function initProfileSocial() {
             await loadFriendsPanel();
         });
     }
+
+    window.__refreshProfileSocial = async () => {
+        await renderIncomingRequests();
+        await renderProfileFriends();
+        await loadFriendsPanel();
+        if (selectedPrivatePeerId) {
+            await loadPrivateMessages(selectedPrivatePeerId);
+        }
+    };
 
     await renderIncomingRequests();
     await renderProfileFriends();
@@ -602,12 +657,12 @@ async function initAdminPage() {
             showNotification(err.message || 'Ошибка загрузки админ-данных', 'warning');
         }
     };
+    window.__loadAdminData = loadAdminData;
 
     await loadAdminData();
 
-    const token = getToken();
-    if (token && typeof window.io === 'function') {
-        const adminSocket = window.io({ auth: { token } });
+    const adminSocket = getRealtimeSocket();
+    if (adminSocket) {
         adminSocket.on('admin_refresh', () => {
             loadAdminData();
         });
