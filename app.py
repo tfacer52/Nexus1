@@ -2,6 +2,8 @@ import hashlib
 import sqlite3
 import secrets
 import os
+import random
+import string
 from datetime import datetime
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
@@ -139,6 +141,7 @@ def remove_pong_client(sid):
 
     leave_room(f"pong:{room_id}")
     socketio.emit('pong_state', get_pong_public_state(room), to=f"pong:{room_id}")
+    socketio.emit('pong_rooms_update', get_pong_rooms_payload())
 
 
 def pong_loop():
@@ -146,11 +149,31 @@ def pong_loop():
         for room_id, room in list(PONG_ROOMS.items()):
             if len(room['clients']) == 0:
                 PONG_ROOMS.pop(room_id, None)
+                socketio.emit('pong_rooms_update', get_pong_rooms_payload())
                 continue
             if room['left_player'] and room['right_player']:
                 step_pong_room(room)
             socketio.emit('pong_state', get_pong_public_state(room), to=f'pong:{room_id}')
         socketio.sleep(1 / 60)
+
+
+def make_room_code(length=6):
+    alphabet = string.ascii_lowercase + string.digits
+    return ''.join(random.choice(alphabet) for _ in range(length))
+
+
+def get_pong_rooms_payload():
+    rooms = []
+    for room_id, room in PONG_ROOMS.items():
+        rooms.append({
+            'id': room_id,
+            'players_count': len(room['clients']),
+            'left_player': room['clients'][room['left_player']]['username'] if room['left_player'] in room['clients'] else None,
+            'right_player': room['clients'][room['right_player']]['username'] if room['right_player'] in room['clients'] else None,
+            'has_slot': room['left_player'] is None or room['right_player'] is None
+        })
+    rooms.sort(key=lambda r: r['id'])
+    return rooms
 
 def hash_password(password):
     return hashlib.sha256(password.encode('utf-8')).hexdigest()
@@ -659,6 +682,34 @@ def pong_reset():
 def pong_game():
     return send_from_directory('.', 'pong.html')
 
+
+@app.route('/api/pong/rooms', methods=['GET'])
+def pong_rooms_list():
+    user = get_current_user()
+    if not user:
+        return jsonify({'error': 'Unauthorized'}), 401
+    return jsonify(get_pong_rooms_payload())
+
+
+@app.route('/api/pong/rooms', methods=['POST'])
+def pong_rooms_create():
+    user = get_current_user()
+    if not user:
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    data = request.json or {}
+    room_id = str(data.get('room', '')).strip().lower()
+
+    if not room_id:
+        room_id = make_room_code()
+        while room_id in PONG_ROOMS:
+            room_id = make_room_code()
+
+    if room_id not in PONG_ROOMS:
+        PONG_ROOMS[room_id] = create_pong_room(room_id)
+
+    return jsonify({'room': room_id, 'message': 'Room ready'})
+
 @socketio.on('connect')
 def handle_connect(auth):
     global PONG_LOOP_STARTED
@@ -785,6 +836,7 @@ def handle_pong_join(payload):
 
     emit('pong_joined', {'room': room_id, 'side': side})
     socketio.emit('pong_state', get_pong_public_state(room), to=f"pong:{room_id}")
+    socketio.emit('pong_rooms_update', get_pong_rooms_payload())
 
 
 @socketio.on('pong_input')
@@ -827,6 +879,7 @@ def handle_pong_reset():
     reset_pong_ball(room, direction=1)
 
     socketio.emit('pong_state', get_pong_public_state(room), to=f"pong:{room_id}")
+    socketio.emit('pong_rooms_update', get_pong_rooms_payload())
     
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8000))

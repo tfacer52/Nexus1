@@ -62,10 +62,15 @@
                     <div>Сторона: <strong id="sideLabel">-</strong></div>
                     <div style="display:flex; gap:10px; align-items:center;">
                         <input id="pongRoomInput" class="admin-input" style="width:120px; padding:8px; font-size:12px;" placeholder="room id" value="public">
+                        <button id="pongCreateBtn" class="btn btn-secondary" style="padding:8px 14px; font-size:12px;">Создать</button>
                         <button id="pongJoinBtn" class="btn btn-secondary" style="padding:8px 14px; font-size:12px;">Войти</button>
                         <span style="color: var(--text-muted); font-size: 13px;">Управление: W/S или ↑/↓</span>
                         <button id="pongResetBtn" class="btn btn-secondary" style="padding:8px 14px; font-size:12px;">Новая игра</button>
                     </div>
+                </div>
+                <div style="width:100%; max-width:800px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:10px;">
+                    <div style="font-size:12px; color:var(--text-muted); margin-bottom:8px;">Активные комнаты</div>
+                    <div id="pongRoomsList" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
                 </div>
                 <canvas id="pongCanvas" width="800" height="500"></canvas>
             </div>
@@ -79,10 +84,12 @@
         const ctx = canvas.getContext('2d');
         const scoreLabel = document.getElementById('scoreLabel');
         const resetBtn = document.getElementById('pongResetBtn');
+        const createBtn = document.getElementById('pongCreateBtn');
         const joinBtn = document.getElementById('pongJoinBtn');
         const roomInput = document.getElementById('pongRoomInput');
         const roomLabel = document.getElementById('roomLabel');
         const sideLabel = document.getElementById('sideLabel');
+        const roomsList = document.getElementById('pongRoomsList');
 
         const token = localStorage.getItem('nexus_auth_token');
         let socket = null;
@@ -90,6 +97,44 @@
         let currentDirection = 0;
         let mySide = 'spectator';
         let joinedRoom = 'public';
+
+        async function apiFetch(url, options = {}) {
+            const headers = { ...(options.headers || {}) };
+            if (token) headers.Authorization = `Bearer ${token}`;
+            const res = await fetch(url, { ...options, headers });
+            let data = {};
+            try { data = await res.json(); } catch (_) {}
+            if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+            return data;
+        }
+
+        function renderRooms(rooms) {
+            if (!roomsList) return;
+            roomsList.innerHTML = (rooms || []).length
+                ? rooms.map((r) => `
+                    <button type="button" data-room-id="${r.id}" class="btn btn-secondary" style="padding:6px 10px; font-size:11px;">
+                        ${r.id} (${r.players_count}/2)
+                    </button>
+                `).join('')
+                : '<span style="font-size:12px; color:var(--text-muted);">Пока нет комнат</span>';
+
+            roomsList.querySelectorAll('[data-room-id]').forEach((btn) => {
+                btn.addEventListener('click', () => {
+                    roomInput.value = btn.getAttribute('data-room-id');
+                    joinBtn.click();
+                });
+            });
+        }
+
+        async function refreshRooms() {
+            if (!token) return;
+            try {
+                const rooms = await apiFetch('/api/pong/rooms');
+                renderRooms(rooms);
+            } catch (_) {
+                renderRooms([]);
+            }
+        }
 
         if (!token || typeof io !== 'function') {
             scoreLabel.textContent = 'Требуется вход';
@@ -108,6 +153,12 @@
                 scoreLabel.textContent = `${state.left_score} : ${state.right_score}`;
                 draw();
             });
+
+            socket.on('pong_rooms_update', (rooms) => {
+                renderRooms(rooms);
+            });
+
+            refreshRooms();
         }
 
         function sendDirection(dir) {
@@ -166,6 +217,22 @@
             if (!socket) return;
             const room = (roomInput.value || 'public').trim().toLowerCase();
             socket.emit('pong_join', { room });
+        });
+
+        createBtn.addEventListener('click', async () => {
+            if (!socket) return;
+            try {
+                const room = (roomInput.value || '').trim().toLowerCase();
+                const payload = await apiFetch('/api/pong/rooms', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ room })
+                });
+                roomInput.value = payload.room;
+                joinBtn.click();
+            } catch (err) {
+                console.error(err);
+            }
         });
 
         resetBtn.addEventListener('click', () => {
