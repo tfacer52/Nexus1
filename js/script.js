@@ -1,4 +1,7 @@
 const AUTH_TOKEN_KEY = 'nexus_auth_token';
+let socialSocket = null;
+let currentRoom = 'global';
+let selectedPrivatePeerId = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     setupNavigation();
@@ -13,6 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initProfilePage();
     initAdminPage();
     enforcePageAccess();
+    initSocialFeatures();
 });
 
 function getToken() {
@@ -124,28 +128,271 @@ function setupCartButtons() {
 }
 
 function setupStreamChat() {
+    // Реальная логика чата и онлайна подключается в initSocialFeatures
+}
+
+function renderChatMessage(container, msg) {
+    const row = document.createElement('div');
+    const username = msg.username || 'User';
+    const text = String(msg.message || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    row.innerHTML = `<span style="color: #a78bfa; font-weight: bold;">${username}:</span> ${text}`;
+    container.appendChild(row);
+}
+
+async function loadFriendsPanel() {
+    const listEl = document.getElementById('friendsListDynamic');
+    const countEl = document.getElementById('friendsOnlineCount');
+    if (!listEl) return;
+
+    try {
+        const friends = await apiFetch('/api/social/friends');
+        const onlineCount = friends.filter(f => f.status === 'online').length;
+        if (countEl) countEl.textContent = `${onlineCount} онлайн`;
+
+        listEl.innerHTML = friends.length
+            ? friends.map((f) => `
+                <div class="friend-item">
+                    <div class="friend-avatar">
+                        <div class="status-dot ${f.status === 'online' ? 'status-online' : 'status-offline'}"></div>
+                    </div>
+                    <div class="friend-info">
+                        <div class="friend-name">${f.username}</div>
+                        <div class="friend-status">${f.status === 'online' ? 'В сети' : 'Не в сети'}</div>
+                    </div>
+                </div>
+            `).join('')
+            : '<div style="color: var(--text-muted); font-size: 12px;">Друзей пока нет</div>';
+    } catch (_) {
+        listEl.innerHTML = '<div style="color: var(--text-muted); font-size: 12px;">Войдите, чтобы видеть друзей</div>';
+        if (countEl) countEl.textContent = '0 онлайн';
+    }
+}
+
+async function initSocialFeatures() {
+    await loadFriendsPanel();
+
+    initProfileSocial();
+
     const chatInput = document.getElementById('streamChatInput');
     const sendButton = document.getElementById('streamChatSend');
     const chatMessages = document.getElementById('streamChatMessages');
+    const roomSelect = document.getElementById('streamRoomSelect');
+    const token = getToken();
+
     if (!chatInput || !sendButton || !chatMessages) return;
 
-    const sendMessage = () => {
-        const text = chatInput.value.trim();
-        if (!text) return;
-        const row = document.createElement('div');
-        row.innerHTML = `<span style="color: #fbbf24; font-weight: bold;">Вы:</span> ${text}`;
-        chatMessages.appendChild(row);
+    if (!token) {
+        const note = document.createElement('div');
+        note.style.opacity = '0.7';
+        note.textContent = 'Войдите в аккаунт, чтобы отправлять сообщения в общий чат.';
+        chatMessages.appendChild(note);
+        sendButton.disabled = true;
+        return;
+    }
+
+    // Fallback history через API
+    try {
+        const history = await apiFetch('/api/chat/history');
+        chatMessages.innerHTML = '';
+        history.forEach((m) => renderChatMessage(chatMessages, m));
         chatMessages.scrollTop = chatMessages.scrollHeight;
-        chatInput.value = '';
+    } catch (_) {}
+
+    // Real-time через Socket.IO
+    if (typeof window.io === 'function') {
+        socialSocket = window.io({ auth: { token } });
+
+        socialSocket.on('chat_history', (messages) => {
+            chatMessages.innerHTML = '';
+            (messages || []).forEach((m) => renderChatMessage(chatMessages, m));
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        });
+
+        socialSocket.on('chat_message', (msg) => {
+            if ((msg.room || 'global') !== currentRoom) return;
+            renderChatMessage(chatMessages, msg);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        });
+
+        socialSocket.on('online_users', () => {
+            loadFriendsPanel();
+        });
+
+        socialSocket.on('private_message', (msg) => {
+            if (!selectedPrivatePeerId) return;
+            const isCurrentPeer = msg.from_user_id === selectedPrivatePeerId || msg.to_user_id === selectedPrivatePeerId;
+            if (isCurrentPeer && typeof window.loadPrivateMessages === 'function') {
+                window.loadPrivateMessages(selectedPrivatePeerId);
+            }
+        });
+
+        roomSelect?.addEventListener('change', () => {
+            currentRoom = roomSelect.value || 'global';
+            socialSocket.emit('chat_join', { room: currentRoom });
+        });
+
+        socialSocket.emit('chat_join', { room: currentRoom });
+
+        const send = () => {
+            const text = chatInput.value.trim();
+            if (!text) return;
+            socialSocket.emit('chat_send', { message: text, room: currentRoom });
+            chatInput.value = '';
+        };
+
+        sendButton.addEventListener('click', send);
+        chatInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                send();
+            }
+        });
+    }
+}
+
+async function initProfileSocial() {
+    const friendSearchInput = document.getElementById('friendSearchInput');
+    const friendSearchBtn = document.getElementById('friendSearchBtn');
+    const friendSearchResults = document.getElementById('friendSearchResults');
+    const incomingRequests = document.getElementById('incomingRequests');
+    const profileFriendsList = document.getElementById('profileFriendsList');
+    const privatePeerLabel = document.getElementById('privatePeerLabel');
+    const privateMessages = document.getElementById('privateMessages');
+    const privateMessageInput = document.getElementById('privateMessageInput');
+    const privateMessageSend = document.getElementById('privateMessageSend');
+
+    if (!friendSearchBtn && !incomingRequests && !profileFriendsList) return;
+
+    const renderIncomingRequests = async () => {
+        if (!incomingRequests) return;
+        try {
+            const reqs = await apiFetch('/api/social/requests');
+            incomingRequests.innerHTML = reqs.length
+                ? reqs.map((r) => `
+                    <div style="display:flex; justify-content:space-between; gap:8px; align-items:center; background:rgba(255,255,255,0.04); padding:8px; border-radius:8px;">
+                        <div style="font-size:13px;">${r.from_username}</div>
+                        <div style="display:flex; gap:6px;">
+                            <button type="button" class="btn btn-primary" data-accept-id="${r.id}" style="padding:6px 10px; font-size:11px;">Принять</button>
+                            <button type="button" class="btn btn-secondary" data-reject-id="${r.id}" style="padding:6px 10px; font-size:11px;">Отклонить</button>
+                        </div>
+                    </div>
+                `).join('')
+                : '<div style="color: var(--text-muted); font-size: 12px;">Нет входящих заявок</div>';
+
+            incomingRequests.querySelectorAll('[data-accept-id]').forEach((btn) => {
+                btn.addEventListener('click', async () => {
+                    await apiFetch(`/api/social/request/${btn.getAttribute('data-accept-id')}/accept`, { method: 'POST' });
+                    showNotification('Заявка принята', 'success');
+                    await renderIncomingRequests();
+                    await renderProfileFriends();
+                    await loadFriendsPanel();
+                });
+            });
+
+            incomingRequests.querySelectorAll('[data-reject-id]').forEach((btn) => {
+                btn.addEventListener('click', async () => {
+                    await apiFetch(`/api/social/request/${btn.getAttribute('data-reject-id')}/reject`, { method: 'POST' });
+                    showNotification('Заявка отклонена', 'info');
+                    await renderIncomingRequests();
+                });
+            });
+        } catch (_) {
+            incomingRequests.innerHTML = '<div style="color: var(--text-muted); font-size: 12px;">Войдите для просмотра заявок</div>';
+        }
     };
 
-    sendButton.addEventListener('click', sendMessage);
-    chatInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            sendMessage();
+    const renderProfileFriends = async () => {
+        if (!profileFriendsList) return;
+        try {
+            const friends = await apiFetch('/api/social/friends');
+            profileFriendsList.innerHTML = friends.length
+                ? friends.map((f) => `
+                    <button type="button" data-peer-id="${f.id}" data-peer-name="${f.username}" class="btn btn-secondary" style="justify-content:space-between; padding:8px 10px; font-size:12px;">
+                        <span>${f.username}</span><span>${f.status === 'online' ? '🟢' : '⚪'}</span>
+                    </button>
+                `).join('')
+                : '<div style="color: var(--text-muted); font-size: 12px;">Нет друзей</div>';
+
+            profileFriendsList.querySelectorAll('[data-peer-id]').forEach((btn) => {
+                btn.addEventListener('click', async () => {
+                    selectedPrivatePeerId = Number(btn.getAttribute('data-peer-id'));
+                    const name = btn.getAttribute('data-peer-name');
+                    if (privatePeerLabel) privatePeerLabel.textContent = `Собеседник: ${name}`;
+                    await loadPrivateMessages(selectedPrivatePeerId);
+                });
+            });
+        } catch (_) {
+            profileFriendsList.innerHTML = '<div style="color: var(--text-muted); font-size: 12px;">Недоступно</div>';
+        }
+    };
+
+    friendSearchBtn?.addEventListener('click', async () => {
+        const q = friendSearchInput?.value.trim();
+        if (!q) return;
+        try {
+            const users = await apiFetch(`/api/social/users?q=${encodeURIComponent(q)}`);
+            friendSearchResults.innerHTML = users.length
+                ? users.map((u) => `
+                    <div style="display:flex; justify-content:space-between; gap:8px; align-items:center; background:rgba(255,255,255,0.04); padding:8px; border-radius:8px;">
+                        <div style="font-size:13px;">${u.username}</div>
+                        <button type="button" class="btn btn-primary" data-add-id="${u.id}" style="padding:6px 10px; font-size:11px;">+ Друзья</button>
+                    </div>
+                `).join('')
+                : '<div style="color: var(--text-muted); font-size: 12px;">Никого не найдено</div>';
+
+            friendSearchResults.querySelectorAll('[data-add-id]').forEach((btn) => {
+                btn.addEventListener('click', async () => {
+                    try {
+                        await apiFetch('/api/social/request', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ to_user_id: Number(btn.getAttribute('data-add-id')) })
+                        });
+                        showNotification('Заявка отправлена', 'success');
+                    } catch (err) {
+                        showNotification(err.message || 'Не удалось отправить заявку', 'warning');
+                    }
+                });
+            });
+        } catch (err) {
+            friendSearchResults.innerHTML = `<div style="color: var(--text-muted); font-size: 12px;">${err.message}</div>`;
         }
     });
+
+    privateMessageSend?.addEventListener('click', async () => {
+        const text = privateMessageInput?.value.trim();
+        if (!selectedPrivatePeerId || !text) return;
+        try {
+            await apiFetch(`/api/chat/private/${selectedPrivatePeerId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: text })
+            });
+            privateMessageInput.value = '';
+            await loadPrivateMessages(selectedPrivatePeerId);
+        } catch (err) {
+            showNotification(err.message || 'Ошибка отправки личного сообщения', 'warning');
+        }
+    });
+
+    async function loadPrivateMessages(peerId) {
+        if (!privateMessages || !peerId) return;
+        try {
+            const items = await apiFetch(`/api/chat/private/${peerId}`);
+            privateMessages.innerHTML = items.length
+                ? items.map((m) => `<div style="font-size:12px;"><span style="color:#a78bfa;">${m.from_user_id === peerId ? 'Друг' : 'Вы'}:</span> ${String(m.message).replace(/</g, '&lt;')}</div>`).join('')
+                : '<div style="color: var(--text-muted); font-size: 12px;">Нет сообщений</div>';
+            privateMessages.scrollTop = privateMessages.scrollHeight;
+        } catch (_) {
+            privateMessages.innerHTML = '<div style="color: var(--text-muted); font-size: 12px;">Чат недоступен</div>';
+        }
+    }
+
+    // expose for socket callback
+    window.loadPrivateMessages = loadPrivateMessages;
+
+    await renderIncomingRequests();
+    await renderProfileFriends();
 }
 
 async function getCurrentUser() {

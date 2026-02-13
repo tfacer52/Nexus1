@@ -141,28 +141,10 @@
         <!-- RIGHT PANEL -->
         <aside class="friends-sidebar">
             <div style="font-size: 12px; color: var(--text-muted); text-transform: uppercase; font-weight: 700; margin-bottom: 20px; display: flex; justify-content: space-between;">
-                Друзья <span>(3 онлайна)</span>
+                Друзья <span id="friendsOnlineCount">0 онлайн</span>
             </div>
 
-            <div class="friend-item">
-                <div class="friend-avatar">
-                    <div class="status-dot status-ingame"></div>
-                </div>
-                <div class="friend-info">
-                    <div class="friend-name">NeonRider</div>
-                    <div class="friend-status ingame">В игре: Apex</div>
-                </div>
-            </div>
-
-            <div class="friend-item">
-                <div class="friend-avatar" style="background: #be185d;">
-                    <div class="status-dot status-online"></div>
-                </div>
-                <div class="friend-info">
-                    <div class="friend-name">Luna_Sky</div>
-                    <div class="friend-status" style="color: var(--text-link);">В сети</div>
-                </div>
-            </div>
+            <div id="friendsListDynamic"></div>
             
             <div style="margin-top: auto;">
                  <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 12px; border: 1px solid rgba(251, 191, 36, 0.2);">
